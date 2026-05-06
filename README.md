@@ -108,6 +108,13 @@ Update `app.json`:
 }
 ```
 
+Add your church's app artwork in an `assets/` folder. This template does not include church-specific images, so create these files or update `app.json` to use your own filenames:
+
+- `assets/your-icon.png`
+- `assets/your-splash.png`
+- `assets/your-adaptive-icon.png`
+- `assets/your-favicon.png`
+
 ### 4. Set up push notifications Edge Function
 
 In Supabase → Edge Functions, create a function called `send-notification`:
