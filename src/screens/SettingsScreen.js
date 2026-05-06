@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, StatusBar, Image, Alert, Linking } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, StatusBar, Alert, Linking } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as Notifications from 'expo-notifications';
@@ -99,13 +99,10 @@ export default function SettingsScreen({ navigation }) {
           </View>
         ))}
 
-        {/* Church Logo at bottom */}
         <View style={styles.logoContainer}>
-          <Image
-            source={require('../../assets/logo.png')}
-            style={styles.logo}
-            resizeMode="contain"
-          />
+          <View style={styles.logoMark}>
+            <Ionicons name="business-outline" size={34} color={Colors.primary} />
+          </View>
           <Text style={styles.churchName}>{CHURCH_INFO.name}</Text>
           <Text style={styles.churchAddress}>{CHURCH_INFO.address}</Text>
         </View>
@@ -130,7 +127,7 @@ const styles = StyleSheet.create({
   rowTitle: { fontSize: 15, color: Colors.textDark, fontWeight: '500' },
   rowValue: { fontSize: 15, color: Colors.textLight },
   logoContainer: { alignItems: 'center', marginTop: 32, gap: 8 },
-  logo: { width: 80, height: 80, opacity: 0.85 },
+  logoMark: { width: 72, height: 72, borderRadius: 18, backgroundColor: Colors.primary + '15', alignItems: 'center', justifyContent: 'center' },
   churchName: { fontSize: 14, fontWeight: '600', color: Colors.textMedium, textAlign: 'center' },
   churchAddress: { fontSize: 12, color: Colors.textLight, textAlign: 'center' },
 });
