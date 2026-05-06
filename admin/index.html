@@ -1,0 +1,1219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title>Church App Admin</title>
+  <link href="https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@400;600;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root {
+      --maroon: #4a0e0e;
+      --maroon-light: #6b1212;
+      --gold: #c9a84c;
+      --cream: #fdf8f0;
+      --white: #ffffff;
+      --gray: #f5f5f5;
+      --border: #e8e0d0;
+      --text: #1a0a0a;
+      --text-light: #7a6060;
+      --success: #16a34a;
+      --error: #dc2626;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'DM Sans', sans-serif; background: var(--cream); color: var(--text); min-height: 100vh; }
+
+    .login-screen { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: var(--maroon); padding: 20px; }
+    .login-card { background: var(--white); border-radius: 24px; padding: 48px 40px; width: 100%; max-width: 400px; text-align: center; }
+    .login-logo { width: 80px; height: 80px; background: var(--maroon); border-radius: 20px; margin: 0 auto 24px; display: flex; align-items: center; justify-content: center; }
+    .login-title { font-family: 'Crimson Pro', serif; font-size: 28px; font-weight: 700; color: var(--maroon); margin-bottom: 4px; }
+    .login-subtitle { font-size: 14px; color: var(--text-light); margin-bottom: 32px; }
+
+    .form-group { margin-bottom: 16px; text-align: left; }
+    .form-group label { display: block; font-size: 13px; font-weight: 500; color: var(--text-light); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .form-group input, .form-group textarea, .form-group select { width: 100%; padding: 12px 16px; border: 1.5px solid var(--border); border-radius: 12px; font-size: 15px; font-family: 'DM Sans', sans-serif; color: var(--text); background: var(--white); transition: border-color 0.2s; outline: none; }
+    .form-group input:focus, .form-group textarea:focus, .form-group select:focus { border-color: var(--maroon); }
+    .form-group textarea { resize: vertical; min-height: 100px; }
+
+    .btn-primary { width: 100%; padding: 14px; background: var(--maroon); color: var(--white); border: none; border-radius: 12px; font-size: 16px; font-weight: 600; font-family: 'DM Sans', sans-serif; cursor: pointer; transition: background 0.2s; margin-top: 8px; }
+    .btn-primary:hover { background: var(--maroon-light); }
+    .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+    .btn-secondary { padding: 10px 20px; background: var(--gray); color: var(--text); border: none; border-radius: 10px; font-size: 14px; font-weight: 500; font-family: 'DM Sans', sans-serif; cursor: pointer; }
+    .btn-edit { padding: 7px 14px; background: #dbeafe; color: #1d4ed8; border: none; border-radius: 8px; font-size: 13px; font-weight: 500; font-family: 'DM Sans', sans-serif; cursor: pointer; }
+    .btn-danger { padding: 7px 14px; background: #fee2e2; color: var(--error); border: none; border-radius: 8px; font-size: 13px; font-weight: 500; font-family: 'DM Sans', sans-serif; cursor: pointer; }
+    .error-msg { color: var(--error); font-size: 13px; margin-top: 12px; padding: 10px; background: #fee2e2; border-radius: 8px; }
+
+    .app { display: none; min-height: 100vh; }
+    .app.visible { display: block; }
+
+    .app-header { background: var(--maroon); color: var(--white); padding: 0 24px; height: 64px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
+    .header-brand { display: flex; align-items: center; gap: 12px; }
+    .header-logo { width: 36px; height: 36px; background: rgba(255,255,255,0.15); border-radius: 10px; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+    .header-title { font-family: 'Crimson Pro', serif; font-size: 20px; font-weight: 700; }
+    .header-subtitle { font-size: 11px; opacity: 0.7; }
+    .logout-btn { background: rgba(255,255,255,0.15); border: none; color: var(--white); padding: 8px 16px; border-radius: 8px; font-size: 13px; font-family: 'DM Sans', sans-serif; cursor: pointer; }
+
+    .nav-tabs { background: var(--white); border-bottom: 1px solid var(--border); display: flex; overflow-x: auto; padding: 0 24px; }
+    .nav-tab { padding: 16px 20px; font-size: 14px; font-weight: 500; color: var(--text-light); border-bottom: 2px solid transparent; cursor: pointer; white-space: nowrap; transition: all 0.2s; }
+    .nav-tab.active { color: var(--maroon); border-bottom-color: var(--maroon); }
+
+    .content { padding: 24px; max-width: 800px; margin: 0 auto; }
+    .section { display: none; }
+    .section.active { display: block; }
+    .section-title { font-family: 'Crimson Pro', serif; font-size: 26px; font-weight: 700; color: var(--maroon); margin-bottom: 6px; }
+    .section-desc { font-size: 14px; color: var(--text-light); margin-bottom: 24px; }
+
+    .form-card { background: var(--white); border-radius: 16px; padding: 24px; border: 1px solid var(--border); margin-bottom: 24px; }
+    .form-card-title { font-size: 16px; font-weight: 600; color: var(--text); margin-bottom: 20px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .form-actions { display: flex; gap: 12px; margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border); flex-wrap: wrap; }
+
+    .success-banner { background: #dcfce7; color: var(--success); padding: 12px 16px; border-radius: 10px; font-size: 14px; font-weight: 500; margin-bottom: 20px; display: none; }
+    .success-banner.visible { display: block; }
+
+    .items-list { display: flex; flex-direction: column; gap: 12px; margin-top: 20px; }
+    .item-card { background: var(--white); border: 1px solid var(--border); border-radius: 12px; padding: 16px; }
+    .item-card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+    .item-info { flex: 1; }
+    .item-title { font-size: 15px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
+    .item-meta { font-size: 13px; color: var(--text-light); }
+    .item-actions { display: flex; gap: 8px; flex-shrink: 0; }
+
+    .edit-form { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border); display: none; }
+    .edit-form.visible { display: block; }
+    .edit-actions { display: flex; gap: 8px; margin-top: 12px; }
+    .btn-save { padding: 8px 20px; background: var(--maroon); color: white; border: none; border-radius: 8px; font-size: 13px; font-weight: 600; font-family: 'DM Sans', sans-serif; cursor: pointer; }
+
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 16px; margin-bottom: 24px; }
+    .stat-card { background: var(--white); border: 1px solid var(--border); border-radius: 14px; padding: 20px; text-align: center; }
+    .stat-number { font-family: 'Crimson Pro', serif; font-size: 36px; font-weight: 700; color: var(--maroon); }
+    .stat-label { font-size: 12px; color: var(--text-light); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 4px; }
+
+    .badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; text-transform: uppercase; }
+    .badge-liturgy { background: #fee2e2; color: var(--maroon); }
+    .badge-service { background: #ede9fe; color: #5b21b6; }
+    .badge-participant { background: #dbeafe; color: #1d4ed8; }
+    .badge-volunteer { background: #dcfce7; color: #15803d; }
+
+    .empty-state { text-align: center; padding: 48px 24px; color: var(--text-light); }
+    .empty-icon { font-size: 48px; margin-bottom: 12px; }
+    .loading { text-align: center; padding: 32px; color: var(--text-light); font-size: 14px; }
+
+    @media (max-width: 600px) {
+      .form-row { grid-template-columns: 1fr; }
+      .content { padding: 16px; }
+      .nav-tab { padding: 14px 14px; font-size: 13px; }
+      .login-card { padding: 32px 24px; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="login-screen" id="loginScreen">
+  <div class="login-card">
+    <div class="login-logo">
+      <img src="https://YOUR_PROJECT_ID.supabase.co/storage/v1/object/public/assets/logo_transparent.png" style="width:60px;height:60px;object-fit:contain" />
+    </div>
+    <div class="login-title">Church App Admin</div>
+    <div class="login-subtitle">Church Management Dashboard</div>
+    <div class="form-group">
+      <label>Password</label>
+      <input type="password" id="passwordInput" placeholder="Enter admin password" onkeydown="if(event.key==='Enter')login()" />
+    </div>
+    <button class="btn-primary" onclick="login()">Sign In</button>
+    <div class="error-msg" id="loginError" style="display:none">Incorrect password. Please try again.</div>
+  </div>
+</div>
+
+<div class="app" id="app">
+  <div class="app-header">
+    <div class="header-brand">
+      <div class="header-logo">
+        <img src="https://YOUR_PROJECT_ID.supabase.co/storage/v1/object/public/assets/logo_transparent.png" style="width:28px;height:28px;object-fit:contain" />
+      </div>
+      <div>
+        <div class="header-title">Church App Admin</div>
+        <div class="header-subtitle">Church Management</div>
+      </div>
+    </div>
+    <button class="logout-btn" onclick="logout()">Sign Out</button>
+  </div>
+
+  <div class="nav-tabs">
+    <div class="nav-tab active" onclick="showSection('dashboard', this)">📊 Dashboard</div>
+    <div class="nav-tab" onclick="showSection('announcements', this)">📢 Announcements</div>
+    <div class="nav-tab" onclick="showSection('notifications', this)">🔔 Notifications</div>
+    <div class="nav-tab" onclick="showSection('events', this)">📅 Events</div>
+    <div class="nav-tab" onclick="showSection('sermons', this)">🎙️ Sermons</div>
+    <div class="nav-tab" onclick="showSection('photos', this)">📸 Photos</div>
+    <div class="nav-tab" onclick="showSection('sheets', this)">📝 Sign-up Sheets</div>
+    <div class="nav-tab" onclick="showSection('signups', this)">📋 Responses</div>
+  </div>
+
+  <div class="content">
+
+    <!-- DASHBOARD -->
+    <div class="section active" id="section-dashboard">
+      <div class="section-title">Dashboard</div>
+      <div class="section-desc">Welcome. Here's an overview of the app content.</div>
+      <div class="stats-grid">
+        <div class="stat-card"><div class="stat-number" id="stat-announcements">—</div><div class="stat-label">Announcements</div></div>
+        <div class="stat-card"><div class="stat-number" id="stat-events">—</div><div class="stat-label">Upcoming Events</div></div>
+        <div class="stat-card"><div class="stat-number" id="stat-sermons">—</div><div class="stat-label">Sermons</div></div>
+        <div class="stat-card"><div class="stat-number" id="stat-signups">—</div><div class="stat-label">Registrations</div></div>
+      </div>
+    </div>
+
+    <!-- ANNOUNCEMENTS -->
+    <div class="section" id="section-announcements">
+      <div class="section-title">Announcements</div>
+      <div class="section-desc">Post announcements that appear instantly in the app.</div>
+      <div class="success-banner" id="announcement-success">✅ Announcement posted successfully!</div>
+      <div class="form-card">
+        <div class="form-card-title">Post New Announcement</div>
+        <div class="form-group"><label>Title *</label><input type="text" id="ann-title" placeholder="e.g. Palm Sunday Celebration" /></div>
+        <div class="form-group"><label>Date</label><input type="date" id="ann-date" onchange="formatAnnDate()" /><input type="hidden" id="ann-date-formatted" /></div>
+        <div class="form-group"><label>Message *</label><textarea id="ann-body" placeholder="Write your announcement here..."></textarea></div>
+        <div class="form-group">
+          <label>Card Image (shown on announcement list)</label>
+          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+            <label style="background:var(--maroon);color:white;padding:10px 18px;border-radius:10px;cursor:pointer;font-size:14px;font-weight:500;white-space:nowrap">
+              📷 Upload Card Image
+              <input type="file" id="ann-card-image-file" accept="image/*" style="display:none" onchange="uploadAnnCardImage()" />
+            </label>
+            <span style="color:var(--text-light);font-size:13px">or</span>
+            <input type="text" id="ann-image" placeholder="Paste card image URL..." style="flex:1;min-width:200px" />
+          </div>
+          <div id="ann-card-image-preview" style="margin-top:10px;display:none">
+            <img id="ann-card-image-thumb" style="width:100%;max-height:120px;object-fit:cover;border-radius:10px;border:1px solid var(--border)" />
+            <div id="ann-card-image-status" style="font-size:12px;color:var(--text-light);margin-top:4px"></div>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Detail Photos (swipeable gallery inside announcement)</label>
+          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px">
+            <label style="background:var(--maroon);color:white;padding:10px 18px;border-radius:10px;cursor:pointer;font-size:14px;font-weight:500;white-space:nowrap">
+              📷 Upload Photos
+              <input type="file" id="ann-image-file" accept="image/*" multiple style="display:none" onchange="uploadAnnImages()" />
+            </label>
+            <span style="color:var(--text-light);font-size:13px">or</span>
+            <div style="display:flex;gap:6px;flex:1;min-width:200px">
+              <input type="text" id="ann-image-url-input" placeholder="Paste image URL..." style="flex:1" />
+              <button class="btn-secondary" onclick="addAnnImageUrl()" style="white-space:nowrap">Add</button>
+            </div>
+          </div>
+          <div id="ann-image-status" style="font-size:12px;color:var(--text-light);margin-bottom:8px"></div>
+          <div id="ann-images-list" style="display:flex;flex-wrap:wrap;gap:8px"></div>
+        </div>
+        <div class="form-group" style="margin-top:16px">
+          <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:15px;text-transform:none;letter-spacing:0">
+            <input type="checkbox" id="ann-push" style="width:18px;height:18px;accent-color:var(--maroon)" />
+            <span style="color:var(--text);font-weight:500">Also send as push notification to all members</span>
+          </label>
+        </div>
+        <div class="form-actions">
+          <button class="btn-primary" onclick="postAnnouncement()" id="ann-btn" style="width:auto;padding:12px 32px">Post Announcement</button>
+          <button class="btn-secondary" onclick="clearAnnForm()">Clear</button>
+        </div>
+      </div>
+      <div class="form-card-title" style="margin-bottom:12px">Recent Announcements</div>
+      <div id="announcements-list" class="loading">Loading...</div>
+    </div>
+
+    <!-- EVENTS -->
+    <div class="section" id="section-events">
+      <div class="section-title">Calendar Events</div>
+      <div class="section-desc">Add or edit events that appear in the app calendar.</div>
+      <div class="success-banner" id="event-success">✅ Event added successfully!</div>
+      <div class="form-card">
+        <div class="form-card-title">Add New Event</div>
+        <div class="form-group"><label>Event Title *</label><input type="text" id="ev-title" placeholder="e.g. Holy Liturgy" /></div>
+        <div class="form-row">
+          <div class="form-group"><label>Date * (YYYY-MM-DD)</label><input type="date" id="ev-date" /></div>
+          <div class="form-group"><label>Type</label><select id="ev-type"><option value="liturgy">Liturgy</option><option value="service">Service</option><option value="education">Education</option><option value="youth">Youth</option></select></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Start Time *</label><input type="time" id="ev-start-raw" onchange="formatTime('ev-start-raw','ev-start')" /><input type="hidden" id="ev-start" /></div>
+          <div class="form-group"><label>End Time *</label><input type="time" id="ev-end-raw" onchange="formatTime('ev-end-raw','ev-end')" /><input type="hidden" id="ev-end" /></div>
+        </div>
+        <div class="form-group"><label>Location</label><input type="text" id="ev-location" placeholder="e.g. Main Church" value="Main Church" /></div>
+        <div class="form-group"><label>Note (optional)</label><input type="text" id="ev-note" placeholder="e.g. Fr. Paul Mikhail" /></div>
+        <div class="form-actions">
+          <button class="btn-primary" onclick="addEvent()" style="width:auto;padding:12px 32px">Add Event</button>
+          <button class="btn-secondary" onclick="clearEvForm()">Clear</button>
+        </div>
+      </div>
+      <div class="form-card-title" style="margin-bottom:12px">Upcoming Events</div>
+      <div id="events-list" class="loading">Loading...</div>
+    </div>
+
+    <!-- SERMONS -->
+    <div class="section" id="section-sermons">
+      <div class="section-title">Sermons</div>
+      <div class="section-desc">Add sermon videos and files.</div>
+      <div class="success-banner" id="sermon-success">✅ Sermon added successfully!</div>
+      <div class="form-card">
+        <div class="form-card-title">Add New Sermon</div>
+        <div class="form-group"><label>Title *</label><input type="text" id="ser-title" placeholder="e.g. Palm Sunday Sermon" /></div>
+        <div class="form-row">
+          <div class="form-group"><label>Speaker</label><input type="text" id="ser-speaker" placeholder="e.g. Fr. Paul Mikhail" /></div>
+          <div class="form-group"><label>Date</label><input type="text" id="ser-date" placeholder="e.g. April 5, 2026" /></div>
+        </div>
+        <div class="form-group"><label>Description</label><textarea id="ser-desc" placeholder="Brief description..." style="min-height:80px"></textarea></div>
+        <div class="form-group"><label>YouTube URL</label><input type="text" id="ser-youtube" placeholder="https://www.youtube.com/watch?v=..." /></div>
+        <div class="form-group"><label>Thumbnail Image URL</label><input type="text" id="ser-image" placeholder="https://..." /></div>
+        <div class="form-actions">
+          <button class="btn-primary" onclick="addSermon()" style="width:auto;padding:12px 32px">Add Sermon</button>
+          <button class="btn-secondary" onclick="clearSerForm()">Clear</button>
+        </div>
+      </div>
+      <div class="form-card">
+        <div class="form-card-title">Add File / Notes</div>
+        <div class="form-group"><label>Title *</label><input type="text" id="file-title" placeholder="e.g. Great Lent Reflection Notes" /></div>
+        <div class="form-group"><label>Description</label><input type="text" id="file-desc" placeholder="Brief description..." /></div>
+        <div class="form-group"><label>Date</label><input type="text" id="file-date" placeholder="e.g. April 2026" /></div>
+        <div class="form-group"><label>File URL * (from Supabase Storage)</label><input type="text" id="file-url" placeholder="https://YOUR_PROJECT_ID.supabase.co/storage/..." /></div>
+        <div class="form-group"><label>File Type</label><select id="file-type"><option value="pdf">PDF</option><option value="image">Image</option><option value="other">Other</option></select></div>
+        <div class="form-actions">
+          <button class="btn-primary" onclick="addFile()" style="width:auto;padding:12px 32px">Add File</button>
+          <button class="btn-secondary" onclick="clearFileForm()">Clear</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- NOTIFICATIONS -->
+    <div class="section" id="section-notifications">
+      <div class="section-title">Push Notifications</div>
+      <div class="section-desc">Send instant push notifications to all congregation members who have the app installed.</div>
+      <div class="success-banner" id="notif-success">✅ Notification sent successfully!</div>
+      <div class="form-card">
+        <div class="form-card-title">Send Notification</div>
+        <div class="form-group"><label>Title *</label><input type="text" id="notif-title" placeholder="e.g. Service Reminder" /></div>
+        <div class="form-group"><label>Message *</label><textarea id="notif-body" placeholder="e.g. Holy Liturgy begins at 8:00 AM tomorrow. All are welcome!" style="min-height:100px"></textarea></div>
+        <div class="form-group">
+          <label>Images (optional)</label>
+          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px">
+            <label style="background:var(--maroon);color:white;padding:10px 18px;border-radius:10px;cursor:pointer;font-size:14px;font-weight:500;white-space:nowrap">
+              📷 Upload Images
+              <input type="file" id="notif-image-file" accept="image/*" multiple style="display:none" onchange="uploadNotifImages()" />
+            </label>
+            <span style="color:var(--text-light);font-size:13px">or</span>
+            <div style="display:flex;gap:6px;flex:1;min-width:200px">
+              <input type="text" id="notif-image-url-input" placeholder="Paste image URL..." style="flex:1" />
+              <button class="btn-secondary" onclick="addNotifImageUrl()" style="white-space:nowrap">Add</button>
+            </div>
+          </div>
+          <div id="notif-image-status" style="font-size:12px;color:var(--text-light);margin-bottom:8px"></div>
+          <div id="notif-images-list" style="display:flex;flex-wrap:wrap;gap:8px"></div>
+        </div>
+        <div class="form-group">
+          <label>Open Screen When Tapped</label>
+          <select id="notif-screen">
+            <option value="">Notification (opens this notification)</option>
+            <option value="Announcements">Announcements</option>
+            <option value="Calendar">Calendar</option>
+            <option value="Sermons">Sermons</option>
+            <option value="Signups">Sign-ups</option>
+            <option value="Confession">Confession</option>
+          </select>
+        </div>
+        <div class="form-actions">
+          <button class="btn-primary" onclick="sendNotification()" id="notif-btn" style="width:auto;padding:12px 32px">🔔 Send to All</button>
+          <button class="btn-secondary" onclick="document.getElementById('notif-title').value='';document.getElementById('notif-body').value=''">Clear</button>
+        </div>
+      </div>
+
+      <div class="form-card">
+        <div class="form-card-title">Registered Devices</div>
+        <div id="tokens-count" class="loading">Loading...</div>
+      </div>
+      <div class="form-card">
+        <div class="form-card-title">Notification History</div>
+        <div id="notif-history" class="loading">Loading...</div>
+      </div>
+    </div>
+
+    <!-- PHOTOS -->
+    <div class="section" id="section-photos">
+      <div class="section-title">Photo Albums</div>
+      <div class="section-desc">Create albums and upload photos that congregation members can view and save.</div>
+      <div class="success-banner" id="album-success">✅ Done!</div>
+
+      <div class="form-card">
+        <div class="form-card-title">Create New Album</div>
+        <div class="form-group"><label>Album Title *</label><input type="text" id="album-title" placeholder="e.g. Ordinations April 4, 2026" /></div>
+        <div class="form-group"><label>Date</label><input type="text" id="album-date" placeholder="e.g. April 4, 2026" /></div>
+        <div class="form-group"><label>Description</label><input type="text" id="album-desc" placeholder="Optional description..." /></div>
+        <div class="form-actions">
+          <button class="btn-primary" onclick="createAlbum()" style="width:auto;padding:12px 32px">Create Album</button>
+          <button class="btn-secondary" onclick="clearAlbumForm()">Clear</button>
+        </div>
+      </div>
+
+      <div class="form-card" id="upload-section" style="display:none">
+        <div class="form-card-title">📤 Upload Photos to: <span id="upload-album-name" style="color:var(--maroon)"></span></div>
+        <div class="form-group">
+          <label>Select Photos (multiple allowed)</label>
+          <input type="file" id="photo-files" accept="image/*" multiple onchange="previewPhotos()" />
+        </div>
+        <div id="photo-previews" style="display:flex;flex-wrap:wrap;gap:8px;margin:12px 0"></div>
+        <div id="upload-progress" style="font-size:13px;color:var(--text-light);margin-top:8px"></div>
+        <div class="form-actions">
+          <button class="btn-primary" onclick="uploadPhotos()" id="upload-btn" style="width:auto;padding:12px 32px">Upload Photos</button>
+          <button class="btn-secondary" onclick="closeUpload()">Cancel</button>
+        </div>
+      </div>
+
+      <div class="form-card-title" style="margin-bottom:12px">Albums</div>
+      <div id="albums-list" class="loading">Loading...</div>
+    </div>
+
+    <!-- SIGN-UP SHEETS -->
+    <div class="section" id="section-sheets">
+      <div class="section-title">Sign-up Sheets</div>
+      <div class="section-desc">Create and manage sign-up sheets that appear in the app.</div>
+      <div class="success-banner" id="sheet-success">✅ Sign-up sheet saved!</div>
+      <div class="form-card">
+        <div class="form-card-title">Create New Sign-up Sheet</div>
+        <div class="form-group"><label>Sheet Type *</label><select id="sheet-type"><option value="registration">📋 Event Registration (VBS, Potluck, etc.)</option><option value="qna">❓ Anonymous Q&A</option></select></div>
+        <div class="form-group"><label>Event Name *</label><input type="text" id="sheet-name" placeholder="e.g. Summer Camp 2026" /></div>
+        <div class="form-group"><label>Date</label><input type="text" id="sheet-date" placeholder="e.g. July 2026" /></div>
+        <div class="form-group"><label>Description</label><textarea id="sheet-desc" placeholder="Brief description of the event..." style="min-height:80px"></textarea></div>
+        <div class="form-group">
+          <label>Image (optional)</label>
+          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+            <label style="background:var(--maroon);color:white;padding:10px 18px;border-radius:10px;cursor:pointer;font-size:14px;font-weight:500;white-space:nowrap">
+              📷 Upload Image
+              <input type="file" id="sheet-image-file" accept="image/*" style="display:none" onchange="uploadSheetImage()" />
+            </label>
+            <span style="color:var(--text-light);font-size:13px">or</span>
+            <input type="text" id="sheet-image" placeholder="Paste image URL..." style="flex:1;min-width:200px" />
+          </div>
+          <div id="sheet-image-preview" style="margin-top:10px;display:none">
+            <img id="sheet-image-thumb" style="width:100%;max-height:150px;object-fit:cover;border-radius:10px;border:1px solid var(--border)" />
+            <div id="sheet-image-status" style="font-size:12px;color:var(--text-light);margin-top:4px"></div>
+          </div>
+        </div>
+        <div class="form-actions">
+          <button class="btn-primary" onclick="createSheet()" style="width:auto;padding:12px 32px">Create Sheet</button>
+          <button class="btn-secondary" onclick="clearSheetForm()">Clear</button>
+        </div>
+      </div>
+      <div class="form-card-title" style="margin-bottom:12px">Active Sign-up Sheets</div>
+      <div id="sheets-list" class="loading">Loading...</div>
+    </div>
+
+    <!-- SIGN-UPS -->
+    <div class="section" id="section-signups">
+      <div class="section-title">Sign-up Responses</div>
+      <div class="section-desc">View all registrations submitted through the app.</div>
+      <div style="margin-bottom:16px">
+        <button class="btn-primary" onclick="exportFilteredCSV()" style="width:auto;padding:12px 24px">📥 Export to CSV</button>
+      </div>
+      <div id="signups-list" class="loading">Loading...</div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  // Template setup:
+  // 1. Replace these placeholders with the new church's Supabase values.
+  // 2. Change ADMIN_PASSWORD before deploying.
+  // 3. Never commit a real service-role key to a public repository.
+  const SUPABASE_URL = 'https://YOUR_PROJECT_ID.supabase.co';
+  const SUPABASE_KEY = 'YOUR_SUPABASE_ANON_KEY';
+  const ADMIN_PASSWORD = 'CHANGE_ME_TO_A_SECURE_PASSWORD';
+  const SUPABASE_SERVICE_KEY = 'YOUR_SUPABASE_SERVICE_ROLE_KEY';
+  const { createClient } = supabase;
+  const db = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  function login() {
+    const pwd = document.getElementById('passwordInput').value;
+    if (pwd === ADMIN_PASSWORD) {
+      const expiry = Date.now() + 60 * 60 * 1000; // 1 hour
+      localStorage.setItem('church_app_admin_auth', expiry);
+      showApp();
+    } else {
+      document.getElementById('loginError').style.display = 'block';
+    }
+  }
+
+  function showApp() {
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('app').classList.add('visible');
+    loadDashboard(); loadAnnouncements(); loadEvents(); loadSignups(); loadSheets(); loadTokensCount(); loadNotifHistory(); loadAlbums();
+  }
+
+  function checkAuth() {
+    const expiry = localStorage.getItem('church_app_admin_auth');
+    if (expiry && Date.now() < parseInt(expiry)) {
+      showApp();
+    }
+  }
+
+  checkAuth();
+
+  function logout() {
+    localStorage.removeItem('church_app_admin_auth');
+    document.getElementById('loginScreen').style.display = 'flex';
+    document.getElementById('app').classList.remove('visible');
+    document.getElementById('passwordInput').value = '';
+    document.getElementById('loginError').style.display = 'none';
+  }
+
+  function showSection(name, tab) {
+    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+    document.getElementById('section-' + name).classList.add('active');
+    tab.classList.add('active');
+  }
+
+  async function loadDashboard() {
+    const [a, e, s, r] = await Promise.all([
+      db.from('announcements').select('id', { count: 'exact', head: true }),
+      db.from('events').select('id', { count: 'exact', head: true }).gte('date', (() => { const n = new Date(); return n.getFullYear() + '-' + String(n.getMonth()+1).padStart(2,'0') + '-' + String(n.getDate()).padStart(2,'0'); })()),
+      db.from('sermons').select('id', { count: 'exact', head: true }),
+      db.from('signup_responses').select('id', { count: 'exact', head: true }),
+    ]);
+    document.getElementById('stat-announcements').textContent = a.count ?? 0;
+    document.getElementById('stat-events').textContent = e.count ?? 0;
+    document.getElementById('stat-sermons').textContent = s.count ?? 0;
+    document.getElementById('stat-signups').textContent = r.count ?? 0;
+  }
+
+  // ANNOUNCEMENTS
+  async function postAnnouncement() {
+    const title = document.getElementById('ann-title').value.trim();
+    const body = document.getElementById('ann-body').value.trim();
+    const rawDate = document.getElementById('ann-date').value;
+    const date = rawDate ? new Date(rawDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : '';
+    const image_url = document.getElementById('ann-image').value.trim();
+    if (!title || !body) return alert('Please fill in title and message.');
+    const btn = document.getElementById('ann-btn');
+    btn.disabled = true; btn.textContent = 'Posting...';
+    const { data, error } = await db.from('announcements').insert([{ title, body, date, image_url: document.getElementById('ann-image').value.trim() || null, images: annImages.length > 0 ? annImages : [] }]).select();
+    btn.disabled = false; btn.textContent = 'Post Announcement';
+    if (error) { alert('Error: ' + error.message); return; }
+    
+    // Send push notification if checkbox is checked
+    const sendPush = document.getElementById('ann-push').checked;
+    if (sendPush) {
+      const notifScreen = document.getElementById('notif-screen').value;
+    const imagesCopy = [...notifImages];
+    await sendPushToAll(title, body, notifScreen, imagesCopy, null);
+    notifImages = [];
+    renderNotifImages();
+    document.getElementById('notif-image-file').value = '';
+    document.getElementById('notif-image-status').textContent = '';
+    document.getElementById('notif-screen').selectedIndex = 0;
+    }
+    
+    showBanner('announcement-success');
+    clearAnnForm(); loadAnnouncements(); loadDashboard(); loadNotifHistory();
+  }
+
+  async function loadAnnouncements() {
+    const { data } = await db.from('announcements').select('*').order('created_at', { ascending: false }).limit(20);
+    const el = document.getElementById('announcements-list');
+    if (!data || data.length === 0) { el.innerHTML = '<div class="empty-state"><div class="empty-icon">📢</div><p>No announcements yet</p></div>'; return; }
+    el.innerHTML = '<div class="items-list">' + data.map(a => `
+      <div class="item-card" id="ann-card-${a.id}">
+        <div class="item-card-top">
+          <div class="item-info">
+            <div class="item-title">${a.title}</div>
+            <div class="item-meta">${a.date || ''} · ${(a.body || '').substring(0, 80)}${a.body && a.body.length > 80 ? '...' : ''}</div>
+          </div>
+          <div class="item-actions">
+            <button class="btn-edit" onclick="toggleEditAnn('${a.id}')">Edit</button>
+            <button class="btn-danger" onclick="deleteItem('announcements','${a.id}', loadAnnouncements)">Delete</button>
+          </div>
+        </div>
+        <div class="edit-form" id="edit-ann-${a.id}">
+          <div class="form-group"><label>Title</label><input type="text" id="edit-ann-title-${a.id}" value="${(a.title||'').replace(/"/g,'&quot;')}" /></div>
+          <div class="form-group"><label>Date</label><input type="text" type="date" id="edit-ann-date-${a.id}" value="${a.date ? new Date(a.date).toISOString().split('T')[0] : ''}" /></div>
+          <div class="form-group"><label>Message</label><textarea id="edit-ann-body-${a.id}">${a.body||''}</textarea></div>
+          <div class="form-group">
+            <label>Image</label>
+            <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+              <label style="background:var(--maroon);color:white;padding:8px 14px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:500;white-space:nowrap">
+                📷 Upload
+                <input type="file" id="edit-ann-image-file-${a.id}" accept="image/*" style="display:none" onchange="uploadEditAnnImage('${a.id}')" />
+              </label>
+              <input type="text" id="edit-ann-image-${a.id}" value="${a.image_url||''}" placeholder="Paste image URL..." style="flex:1;min-width:150px" />
+            </div>
+            <div id="edit-ann-image-status-${a.id}" style="font-size:12px;color:var(--text-light);margin-top:4px"></div>
+          </div>
+          <div class="edit-actions">
+            <button class="btn-save" onclick="saveAnn('${a.id}')">Save Changes</button>
+            <button class="btn-secondary" onclick="toggleEditAnn('${a.id}')">Cancel</button>
+          </div>
+        </div>
+      </div>`).join('') + '</div>';
+  }
+
+  function toggleEditAnn(id) {
+    const form = document.getElementById('edit-ann-' + id);
+    form.classList.toggle('visible');
+  }
+
+  async function saveAnn(id) {
+    const title = document.getElementById('edit-ann-title-' + id).value.trim();
+    const body = document.getElementById('edit-ann-body-' + id).value.trim();
+    const date = document.getElementById('edit-ann-date-' + id).value.trim();
+    const image_url = document.getElementById('edit-ann-image-' + id).value.trim();
+    const { error } = await db.from('announcements').update({ title, body, date, image_url: image_url || null }).eq('id', id);
+    if (error) { alert('Error: ' + error.message); return; }
+    showBanner('announcement-success');
+    loadAnnouncements();
+  }
+
+  function clearAnnForm() {
+    ['ann-title','ann-date','ann-date-formatted','ann-body','ann-image'].forEach(id => document.getElementById(id).value = '');
+    annImages = [];
+    renderAnnImages();
+    document.getElementById('ann-image-status').textContent = '';
+    document.getElementById('ann-image-file').value = '';
+    document.getElementById('ann-push').checked = false;
+    document.getElementById('ann-card-image-preview').style.display = 'none';
+    document.getElementById('ann-card-image-file').value = '';
+    document.getElementById('ann-card-image-status').textContent = '';
+  }
+
+  // EVENTS
+  async function addEvent() {
+    const title = document.getElementById('ev-title').value.trim();
+    const date = document.getElementById('ev-date').value;
+    const start_time = document.getElementById('ev-start').value.trim();
+    const end_time = document.getElementById('ev-end').value.trim();
+    const location = document.getElementById('ev-location').value.trim();
+    const type = document.getElementById('ev-type').value;
+    const note = document.getElementById('ev-note').value.trim();
+    if (!title || !date || !start_time || !end_time) return alert('Please fill in all required fields.');
+    const { error } = await db.from('events').insert([{ title, date, start_time, end_time, location, type, note: note || null }]);
+    if (error) { alert('Error: ' + error.message); return; }
+    showBanner('event-success');
+    clearEvForm(); loadEvents(); loadDashboard();
+  }
+
+  async function loadEvents() {
+    const now = new Date(); const today = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0');
+    const { data } = await db.from('events').select('*').gte('date', today).order('date').limit(30);
+    const el = document.getElementById('events-list');
+    if (!data || data.length === 0) { el.innerHTML = '<div class="empty-state"><div class="empty-icon">📅</div><p>No upcoming events</p></div>'; return; }
+    el.innerHTML = '<div class="items-list">' + data.map(e => `
+      <div class="item-card" id="ev-card-${e.id}">
+        <div class="item-card-top">
+          <div class="item-info">
+            <div class="item-title">${e.title}</div>
+            <div class="item-meta">${e.date} · ${e.start_time} – ${e.end_time} · ${e.location||''}</div>
+          </div>
+          <div class="item-actions">
+            <button class="btn-edit" onclick="toggleEditEv('${e.id}')">Edit</button>
+            <button class="btn-danger" onclick="deleteItem('events','${e.id}', loadEvents)">Delete</button>
+          </div>
+        </div>
+        <div class="edit-form" id="edit-ev-${e.id}">
+          <div class="form-group"><label>Title</label><input type="text" id="edit-ev-title-${e.id}" value="${(e.title||'').replace(/"/g,'&quot;')}" /></div>
+          <div class="form-row">
+            <div class="form-group"><label>Date</label><input type="date" id="edit-ev-date-${e.id}" value="${e.date||''}" /></div>
+            <div class="form-group"><label>Type</label><select id="edit-ev-type-${e.id}"><option value="liturgy" ${e.type==='liturgy'?'selected':''}>Liturgy</option><option value="service" ${e.type==='service'?'selected':''}>Service</option><option value="education" ${e.type==='education'?'selected':''}>Education</option><option value="youth" ${e.type==='youth'?'selected':''}>Youth</option></select></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label>Start Time</label><input type="text" id="edit-ev-start-${e.id}" value="${e.start_time||''}" /></div>
+            <div class="form-group"><label>End Time</label><input type="text" id="edit-ev-end-${e.id}" value="${e.end_time||''}" /></div>
+          </div>
+          <div class="form-group"><label>Location</label><input type="text" id="edit-ev-location-${e.id}" value="${e.location||''}" /></div>
+          <div class="form-group"><label>Note</label><input type="text" id="edit-ev-note-${e.id}" value="${e.note||''}" /></div>
+          <div class="edit-actions">
+            <button class="btn-save" onclick="saveEv('${e.id}')">Save Changes</button>
+            <button class="btn-secondary" onclick="toggleEditEv('${e.id}')">Cancel</button>
+          </div>
+        </div>
+      </div>`).join('') + '</div>';
+  }
+
+  function toggleEditEv(id) { document.getElementById('edit-ev-' + id).classList.toggle('visible'); }
+
+  async function saveEv(id) {
+    const title = document.getElementById('edit-ev-title-' + id).value.trim();
+    const date = document.getElementById('edit-ev-date-' + id).value;
+    const start_time = document.getElementById('edit-ev-start-' + id).value.trim();
+    const end_time = document.getElementById('edit-ev-end-' + id).value.trim();
+    const location = document.getElementById('edit-ev-location-' + id).value.trim();
+    const type = document.getElementById('edit-ev-type-' + id).value;
+    const note = document.getElementById('edit-ev-note-' + id).value.trim();
+    const { error } = await db.from('events').update({ title, date, start_time, end_time, location, type, note: note||null }).eq('id', id);
+    if (error) { alert('Error: ' + error.message); return; }
+    showBanner('event-success');
+    loadEvents();
+  }
+
+  function clearEvForm() {
+    ['ev-title','ev-date','ev-start','ev-start-raw','ev-end','ev-end-raw','ev-note'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('ev-location').value = 'Main Church';
+    document.getElementById('ev-type').selectedIndex = 0;
+  }
+
+  // SERMONS
+  async function addSermon() {
+    const title = document.getElementById('ser-title').value.trim();
+    if (!title) return alert('Please enter a title.');
+    const { error } = await db.from('sermons').insert([{
+      title,
+      speaker: document.getElementById('ser-speaker').value.trim() || null,
+      date: document.getElementById('ser-date').value.trim() || null,
+      description: document.getElementById('ser-desc').value.trim() || null,
+      youtube_url: document.getElementById('ser-youtube').value.trim() || null,
+      image_url: document.getElementById('ser-image').value.trim() || null,
+    }]);
+    if (error) { alert('Error: ' + error.message); return; }
+    showBanner('sermon-success');
+    clearSerForm(); loadDashboard();
+  }
+
+  async function addFile() {
+    const title = document.getElementById('file-title').value.trim();
+    const file_url = document.getElementById('file-url').value.trim();
+    if (!title || !file_url) return alert('Please enter title and file URL.');
+    const { error } = await db.from('sermon_files').insert([{
+      title,
+      description: document.getElementById('file-desc').value.trim() || null,
+      date: document.getElementById('file-date').value.trim() || null,
+      file_url,
+      file_type: document.getElementById('file-type').value,
+    }]);
+    if (error) { alert('Error: ' + error.message); return; }
+    alert('✅ File added successfully!');
+    clearFileForm();
+  }
+
+  function clearSerForm() { ['ser-title','ser-speaker','ser-date','ser-desc','ser-youtube','ser-image'].forEach(id => document.getElementById(id).value = ''); }
+  function clearFileForm() { ['file-title','file-desc','file-date','file-url'].forEach(id => document.getElementById(id).value = ''); document.getElementById('file-type').selectedIndex = 0; }
+
+  // SIGN-UPS
+  let allSignupEvents = [];
+  let selectedSignupEventId = '';
+
+  async function loadSignups() {
+    const { data: events } = await db.from('signups').select('id, event_name').order('created_at', { ascending: false });
+    allSignupEvents = events || [];
+    const el = document.getElementById('signups-list');
+    el.innerHTML = `
+      <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;align-items:center">
+        <select id="signup-event-filter" onchange="filterSignups()" style="padding:10px 14px;border:1.5px solid var(--border);border-radius:10px;font-size:14px;font-family:inherit;color:var(--text);background:var(--white);flex:1;min-width:200px">
+          <option value="">All Events</option>
+          ${allSignupEvents.map(e => `<option value="${e.id}">${e.event_name}</option>`).join('')}
+        </select>
+      </div>
+      <div id="signups-rows" class="loading">Loading...</div>`;
+    filterSignups();
+  }
+
+  let realtimeChannel = null;
+
+  async function filterSignups() {
+    selectedSignupEventId = document.getElementById('signup-event-filter')?.value || '';
+    const rowsEl = document.getElementById('signups-rows');
+    if (rowsEl) rowsEl.innerHTML = '<div class="loading">Loading...</div>';
+
+    // Unsubscribe from previous channel
+    if (realtimeChannel) { db.removeChannel(realtimeChannel); realtimeChannel = null; }
+
+    // Set up real-time subscription
+    realtimeChannel = db.channel('signup_responses_changes')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'signup_responses' }, () => {
+        fetchAndRenderResponses();
+      })
+      .subscribe();
+
+    let query = db.from('signup_responses').select('*, signups(event_name)').order('created_at', { ascending: false }).limit(200);
+    if (selectedSignupEventId) query = query.eq('signup_id', selectedSignupEventId);
+    const { data } = await query;
+    if (!rowsEl) return;
+    renderResponses(data);
+  }
+
+  async function fetchAndRenderResponses() {
+    const rowsEl = document.getElementById('signups-rows');
+    if (!rowsEl) return;
+    let query = db.from('signup_responses').select('*, signups(event_name)').order('created_at', { ascending: false }).limit(200);
+    if (selectedSignupEventId) query = query.eq('signup_id', selectedSignupEventId);
+    const { data } = await query;
+    renderResponses(data);
+  }
+
+  function renderResponses(data) {
+    const rowsEl = document.getElementById('signups-rows');
+    if (!rowsEl) return;
+    if (!data || data.length === 0) { rowsEl.innerHTML = '<div class="empty-state"><div class="empty-icon">📋</div><p>No registrations yet</p></div>'; return; }
+    rowsEl.innerHTML = '<div class="items-list">' + data.map(s => `
+      <div class="item-card">
+        <div class="item-card-top">
+          <div class="item-info">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap">
+              <div class="item-title">${s.parent_first_name||''} ${s.parent_last_name||''}</div>
+              <span class="badge badge-${s.signup_type}">${s.signup_type}</span>
+              ${s.signups?.event_name ? `<span style="font-size:12px;color:var(--text-light);background:var(--gray);padding:2px 8px;border-radius:10px">📋 ${s.signups.event_name}</span>` : ''}
+            </div>
+            ${s.child_first_name ? `<div class="item-meta">👶 Child: ${s.child_first_name} ${s.child_last_name||''} · Grade: ${s.grade||'—'} · ${s.gender||''}</div>` : ''}
+            <div class="item-meta">📧 ${s.email||'—'} · 📞 ${s.phone||'—'}</div>
+            ${s.emergency_contact_name ? `<div class="item-meta">🚨 Emergency: ${s.emergency_contact_name} · ${s.emergency_contact_phone||''}</div>` : ''}
+            ${s.shirt_size ? `<div class="item-meta">👕 Shirt: ${s.shirt_size}</div>` : ''}
+            ${s.allergies && s.allergies.toLowerCase() !== 'none' && s.allergies.trim() ? `<div class="item-meta" style="color:#dc2626;font-weight:600">⚠️ Allergies: ${s.allergies}</div>` : ''}
+            ${s.medical_concerns && s.medical_concerns.toLowerCase() !== 'none' && s.medical_concerns.trim() ? `<div class="item-meta" style="color:#dc2626">⚠️ Medical: ${s.medical_concerns}</div>` : ''}
+            ${s.friend_requests ? `<div class="item-meta">👥 Friends: ${s.friend_requests}</div>` : ''}
+            ${s.question ? `<div class="item-meta" style="margin-top:8px;padding:10px;background:#f5f5f5;border-radius:8px">❓ ${s.question}</div>` : ''}
+            ${s.comments ? `<div class="item-meta">💬 ${s.comments}</div>` : ''}
+          </div>
+          <button class="btn-danger" onclick="deleteItem('signup_responses','${s.id}', loadSignups)">Delete</button>
+        </div>
+      </div>`).join('') + '</div>';
+  }
+
+  async function exportFilteredCSV() {
+    let query = db.from('signup_responses').select('*, signups(event_name)').order('created_at', { ascending: false });
+    if (selectedSignupEventId) query = query.eq('signup_id', selectedSignupEventId);
+    const { data } = await query;
+    if (!data || data.length === 0) { alert('No responses to export.'); return; }
+    const headers = ['Event', 'Date', 'Type', 'Adult First Name', 'Adult Last Name', 'Email', 'Phone', 'Emergency Contact', 'Emergency Phone', 'Child First Name', 'Child Last Name', 'Grade', 'Gender', 'Date of Birth', 'Shirt Size', 'Allergies', 'Medical Concerns', 'Friend Requests', 'Comments'];
+    const rows = data.map(r => [
+      r.signups?.event_name || '', new Date(r.created_at).toLocaleDateString(), r.signup_type || '',
+      r.parent_first_name || '', r.parent_last_name || '', r.email || '', r.phone || '',
+      r.emergency_contact_name || '', r.emergency_contact_phone || '',
+      r.child_first_name || '', r.child_last_name || '', r.grade || '', r.gender || '', r.date_of_birth || '',
+      r.shirt_size || '', r.allergies || '', r.medical_concerns || '', r.friend_requests || '', r.comments || '',
+    ].map(val => `"${String(val).replace(/"/g, '""')}"`));
+    const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    const eventName = selectedSignupEventId ? (allSignupEvents.find(e => e.id === selectedSignupEventId)?.event_name || 'filtered') : 'all-events';
+    a.download = 'church_app_' + eventName.replace(/\s+/g, '_') + '_' + new Date().toISOString().split('T')[0] + '.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  async function deleteItem(table, id, reloadFn) {
+    if (!confirm('Are you sure you want to delete this item?')) return;
+    const { error } = await db.from(table).delete().eq('id', id);
+    if (error) { alert('Error: ' + error.message); return; }
+    reloadFn(); loadDashboard();
+  }
+
+
+  let notifImages = [];
+
+  function renderNotifImages() {
+    const list = document.getElementById('notif-images-list');
+    if (notifImages.length === 0) { list.innerHTML = ''; return; }
+    list.innerHTML = notifImages.map((url, i) => `
+      <div style="position:relative;display:inline-block">
+        <img src="${url}" style="width:80px;height:80px;object-fit:cover;border-radius:8px;border:1px solid var(--border)" />
+        <button onclick="removeNotifImage(${i})" style="position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:50%;background:var(--error);color:white;border:none;cursor:pointer;font-size:12px;line-height:1;display:flex;align-items:center;justify-content:center">✕</button>
+      </div>`).join('');
+  }
+
+  function removeNotifImage(index) {
+    notifImages.splice(index, 1);
+    renderNotifImages();
+  }
+
+  function addNotifImageUrl() {
+    const url = document.getElementById('notif-image-url-input').value.trim();
+    if (!url) return;
+    notifImages.push(url);
+    document.getElementById('notif-image-url-input').value = '';
+    renderNotifImages();
+  }
+
+  async function uploadNotifImages() {
+    const files = document.getElementById('notif-image-file').files;
+    if (!files.length) return;
+    const status = document.getElementById('notif-image-status');
+    status.textContent = 'Uploading...';
+    for (const file of files) {
+      const fileName = 'notifications/' + Date.now() + '-' + Math.random().toString(36).substr(2,6) + '-' + file.name.replace(/\s+/g, '-');
+      const { error } = await db.storage.from('assets').upload(fileName, file, { upsert: true });
+      if (error) { status.textContent = 'Upload failed: ' + error.message; continue; }
+      const { data: urlData } = db.storage.from('assets').getPublicUrl(fileName);
+      notifImages.push(urlData.publicUrl);
+    }
+    renderNotifImages();
+    status.textContent = '✅ ' + files.length + ' image' + (files.length > 1 ? 's' : '') + ' uploaded!';
+    document.getElementById('notif-image-file').value = '';
+  }
+
+  async function sendPushToAll(title, body, notifScreen, notifImage, announcementId) {
+    const { data: tokens } = await db.from('push_tokens').select('token');
+    if (!tokens || tokens.length === 0) return;
+    const tokenList = tokens.map(t => t.token);
+    try {
+      // Save notification first to get its ID
+      const { data: notifRecord } = await db.from('notifications_sent').insert([{ title, body, devices_count: tokens.length }]).select().single();
+      const notificationId = notifRecord && notifRecord.id ? notifRecord.id : null;
+
+      // Build data payload
+      const notifData = {};
+      if (announcementId) notifData.announcementId = announcementId;
+      else if (notificationId) notifData.notificationId = notificationId;
+      else if (notifScreen) notifData.screen = notifScreen;
+
+      const images = Array.isArray(notifImage) ? notifImage : (notifImage ? [notifImage] : []);
+
+      const response = await fetch(`${SUPABASE_URL}/functions/v1/dynamic-worker`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + SUPABASE_SERVICE_KEY,
+        },
+        body: JSON.stringify({ title, body, tokens: tokenList, data: notifData, ...(images.length > 0 ? { image: images[0] } : {}) }),
+      });
+      const result = await response.json();
+      console.log('Push result:', JSON.stringify(result));
+      loadTokensCount();
+      loadNotifHistory();
+    } catch (e) {
+      console.error('Push error:', e);
+    }
+  }
+
+  async function sendNotification() {
+    const title = document.getElementById('notif-title').value.trim();
+    const body = document.getElementById('notif-body').value.trim();
+    if (!title || !body) return alert('Please fill in title and message.');
+    const btn = document.getElementById('notif-btn');
+    btn.disabled = true; btn.textContent = 'Sending...';
+    const { data: tokens } = await db.from('push_tokens').select('token');
+    if (!tokens || tokens.length === 0) {
+      btn.disabled = false; btn.textContent = '🔔 Send to All';
+      alert('No registered devices found.');
+      return;
+    }
+    await sendPushToAll(title, body);
+    showBanner('notif-success');
+    document.getElementById('notif-title').value = '';
+    document.getElementById('notif-body').value = '';
+    btn.disabled = false; btn.textContent = '🔔 Send to All';
+  }
+
+  function fillTemplate(title, body) {
+    document.getElementById('notif-title').value = title;
+    document.getElementById('notif-body').value = body;
+  }
+
+  async function loadNotifHistory() {
+    const { data } = await db.from('notifications_sent').select('*').order('created_at', { ascending: false }).limit(20);
+    const el = document.getElementById('notif-history');
+    if (!el) return;
+    if (!data || data.length === 0) { el.innerHTML = '<p style="color:var(--text-light);font-size:14px">No notifications sent yet</p>'; return; }
+    el.innerHTML = '<div class="items-list">' + data.map(n => `
+      <div class="item-card">
+        <div class="item-card-top">
+          <div class="item-info">
+            <div class="item-title">${n.title}</div>
+            <div class="item-meta">${n.body}</div>
+            <div class="item-meta" style="margin-top:4px">📱 ${n.devices_count || 0} devices · ${new Date(n.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</div>
+          </div>
+          <button class="btn-danger" onclick="deleteItem('notifications_sent','${n.id}', loadNotifHistory)">Delete</button>
+        </div>
+      </div>`).join('') + '</div>';
+  }
+
+  async function loadTokensCount() {
+    const { count } = await db.from('push_tokens').select('id', { count: 'exact', head: true });
+    document.getElementById('tokens-count').innerHTML = `<p style="font-size:24px;font-weight:700;color:var(--maroon)">${count || 0} <span style="font-size:16px;font-weight:400;color:var(--text-light)">devices registered</span></p>`;
+  }
+
+  let currentAlbumId = null;
+  let currentAlbumName = null;
+
+  async function createAlbum() {
+    const title = document.getElementById('album-title').value.trim();
+    const date = document.getElementById('album-date').value.trim();
+    const description = document.getElementById('album-desc').value.trim();
+    if (!title) return alert('Please enter an album title.');
+    const { data, error } = await db.from('photo_albums').insert([{ title, date: date||null, description: description||null, is_active: true }]).select();
+    if (error) { alert('Error: ' + error.message); return; }
+    showBanner('album-success');
+    clearAlbumForm();
+    loadAlbums();
+    // Auto open upload for new album
+    openUpload(data[0].id, title);
+  }
+
+  function clearAlbumForm() {
+    ['album-title','album-date','album-desc'].forEach(id => document.getElementById(id).value = '');
+  }
+
+  async function loadAlbums() {
+    const { data } = await db.from('photo_albums').select('*').order('created_at', { ascending: false });
+    const el = document.getElementById('albums-list');
+    if (!data || data.length === 0) { el.innerHTML = '<div class="empty-state"><div class="empty-icon">📸</div><p>No albums yet</p></div>'; return; }
+    
+    // Get photo counts
+    const counts = await Promise.all(data.map(a => db.from('photos').select('id', { count: 'exact', head: true }).eq('album_id', a.id)));
+    
+    el.innerHTML = '<div class="items-list">' + data.map((a, i) => `
+      <div class="item-card">
+        <div class="item-card-top">
+          <div class="item-info">
+            <div class="item-title">${a.title}</div>
+            <div class="item-meta">${a.date||''} · ${counts[i].count || 0} photos · ${a.is_active ? '🟢 Active' : '🔴 Inactive'}</div>
+          </div>
+          <div class="item-actions">
+            <button class="btn-edit" onclick="openUpload('${a.id}', '${a.title.replace(/'/g, "\'")}')">📤 Upload</button>
+            <button class="btn-edit" onclick="toggleAlbum('${a.id}', ${!a.is_active})">${a.is_active ? 'Hide' : 'Show'}</button>
+            <button class="btn-danger" onclick="deleteAlbum('${a.id}')">Delete</button>
+          </div>
+        </div>
+      </div>`).join('') + '</div>';
+  }
+
+  function openUpload(albumId, albumName) {
+    currentAlbumId = albumId;
+    currentAlbumName = albumName;
+    document.getElementById('upload-album-name').textContent = albumName;
+    document.getElementById('upload-section').style.display = 'block';
+    document.getElementById('photo-previews').innerHTML = '';
+    document.getElementById('upload-progress').textContent = '';
+    document.getElementById('photo-files').value = '';
+    document.getElementById('upload-section').scrollIntoView({ behavior: 'smooth' });
+  }
+
+  function closeUpload() {
+    document.getElementById('upload-section').style.display = 'none';
+    currentAlbumId = null;
+  }
+
+  function previewPhotos() {
+    const files = document.getElementById('photo-files').files;
+    const preview = document.getElementById('photo-previews');
+    preview.innerHTML = '';
+    Array.from(files).forEach(file => {
+      const img = document.createElement('img');
+      img.src = URL.createObjectURL(file);
+      img.style.cssText = 'width:80px;height:80px;object-fit:cover;border-radius:8px;border:1px solid var(--border)';
+      preview.appendChild(img);
+    });
+    document.getElementById('upload-progress').textContent = `${files.length} photo${files.length !== 1 ? 's' : ''} selected`;
+  }
+
+  async function uploadPhotos() {
+    if (!currentAlbumId) return;
+    const files = document.getElementById('photo-files').files;
+    if (!files.length) return alert('Please select photos to upload.');
+    
+    const btn = document.getElementById('upload-btn');
+    btn.disabled = true;
+    
+    let uploaded = 0;
+    let firstUrl = null;
+    
+    for (const file of files) {
+      const fileName = `${currentAlbumId}/${Date.now()}-${Math.random().toString(36).substr(2,6)}-${file.name.replace(/\s+/g, '-')}`;
+      document.getElementById('upload-progress').textContent = `Uploading ${uploaded + 1} of ${files.length}...`;
+      
+      const { error: uploadError } = await db.storage.from('photos').upload(fileName, file, { upsert: true });
+      if (uploadError) { console.error(uploadError); continue; }
+      
+      const { data: urlData } = db.storage.from('photos').getPublicUrl(fileName);
+      const url = urlData.publicUrl;
+      
+      if (!firstUrl) firstUrl = url;
+      
+      await db.from('photos').insert([{ album_id: currentAlbumId, url }]);
+      uploaded++;
+    }
+    
+    // Set first photo as cover if album has no cover
+    if (firstUrl) {
+      const { data: album } = await db.from('photo_albums').select('cover_url').eq('id', currentAlbumId).single();
+      if (!album?.cover_url) {
+        await db.from('photo_albums').update({ cover_url: firstUrl }).eq('id', currentAlbumId);
+      }
+    }
+    
+    document.getElementById('upload-progress').textContent = `✅ ${uploaded} photo${uploaded !== 1 ? 's' : ''} uploaded successfully!`;
+    btn.disabled = false;
+    document.getElementById('photo-files').value = '';
+    document.getElementById('photo-previews').innerHTML = '';
+    loadAlbums();
+  }
+
+  async function toggleAlbum(id, active) {
+    await db.from('photo_albums').update({ is_active: active }).eq('id', id);
+    loadAlbums();
+  }
+
+  async function deleteAlbum(id) {
+    if (!confirm('Delete this album and all its photos?')) return;
+    await db.from('photos').delete().eq('album_id', id);
+    await db.from('photo_albums').delete().eq('id', id);
+    loadAlbums();
+  }
+
+  // SIGN-UP SHEETS
+  async function createSheet() {
+    const event_name = document.getElementById('sheet-name').value.trim();
+    const event_date = document.getElementById('sheet-date').value.trim();
+    const event_description = document.getElementById('sheet-desc').value.trim();
+    const event_image_url = document.getElementById('sheet-image').value.trim();
+    if (!event_name) return alert('Please enter an event name.');
+    const sheet_type = document.getElementById('sheet-type').value || 'registration';
+    const { error } = await db.from('signups').insert([{ event_name, event_date: event_date||null, event_description: event_description||null, event_image_url: event_image_url||null, is_active: true, type: sheet_type }]);
+    if (error) { alert('Error: ' + error.message); return; }
+    showBanner('sheet-success');
+    clearSheetForm(); loadSheets();
+  }
+
+  async function loadSheets() {
+    const { data } = await db.from('signups').select('*').order('created_at', { ascending: false });
+    const el = document.getElementById('sheets-list');
+    if (!data || data.length === 0) { el.innerHTML = '<div class="empty-state"><div class="empty-icon">📝</div><p>No sign-up sheets yet</p></div>'; return; }
+    el.innerHTML = '<div class="items-list">' + data.map(s => `
+      <div class="item-card">
+        <div class="item-card-top">
+          <div class="item-info">
+            <div class="item-title">${s.event_name}</div>
+            <div class="item-meta">${s.event_date||''} · ${s.is_active ? '🟢 Active' : '🔴 Inactive'} · ${s.type === 'qna' ? '❓ Q&A' : '📋 Registration'}</div>
+            ${s.event_description ? '<div class="item-meta">' + s.event_description.substring(0,80) + '</div>' : ''}
+          </div>
+          <div class="item-actions">
+            <button class="btn-edit" onclick="toggleSheet('${s.id}', ${!s.is_active})">${s.is_active ? 'Deactivate' : 'Activate'}</button>
+            <button class="btn-danger" onclick="deleteItem('signups','${s.id}', loadSheets)">Delete</button>
+          </div>
+        </div>
+      </div>`).join('') + '</div>';
+  }
+
+  async function toggleSheet(id, active) {
+    await db.from('signups').update({ is_active: active }).eq('id', id);
+    loadSheets();
+  }
+
+  function clearSheetForm() {
+    ['sheet-name','sheet-date','sheet-desc','sheet-image'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('sheet-type').selectedIndex = 0;
+    document.getElementById('sheet-image-preview').style.display = 'none';
+    document.getElementById('sheet-image-file').value = '';
+  }
+
+  function formatAnnDate() {
+    const raw = document.getElementById('ann-date').value;
+    if (raw) {
+      const formatted = new Date(raw + 'T00:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+      document.getElementById('ann-date-formatted').value = formatted;
+    }
+  }
+
+  async function uploadSheetImage() {
+    const file = document.getElementById('sheet-image-file').files[0];
+    if (!file) return;
+    const preview = document.getElementById('sheet-image-preview');
+    const thumb = document.getElementById('sheet-image-thumb');
+    const status = document.getElementById('sheet-image-status');
+    preview.style.display = 'block';
+    thumb.src = URL.createObjectURL(file);
+    status.textContent = 'Uploading...';
+    const fileName = 'signups/' + Date.now() + '-' + file.name.replace(/\s+/g, '-');
+    const { data, error } = await db.storage.from('assets').upload(fileName, file, { upsert: true });
+    if (error) { status.textContent = 'Upload failed: ' + error.message; return; }
+    const { data: urlData } = db.storage.from('assets').getPublicUrl(fileName);
+    document.getElementById('sheet-image').value = urlData.publicUrl;
+    status.textContent = '✅ Uploaded successfully!';
+  }
+
+  async function uploadEditAnnImage(id) {
+    const file = document.getElementById('edit-ann-image-file-' + id).files[0];
+    if (!file) return;
+    const status = document.getElementById('edit-ann-image-status-' + id);
+    status.textContent = 'Uploading...';
+    const fileName = 'announcements/' + Date.now() + '-' + file.name.replace(/\s+/g, '-');
+    const { data, error } = await db.storage.from('assets').upload(fileName, file, { upsert: true });
+    if (error) { status.textContent = 'Upload failed: ' + error.message; return; }
+    const { data: urlData } = db.storage.from('assets').getPublicUrl(fileName);
+    document.getElementById('edit-ann-image-' + id).value = urlData.publicUrl;
+    status.textContent = '✅ Uploaded!';
+  }
+
+  async function uploadAnnCardImage() {
+    const file = document.getElementById('ann-card-image-file').files[0];
+    if (!file) return;
+    const preview = document.getElementById('ann-card-image-preview');
+    const thumb = document.getElementById('ann-card-image-thumb');
+    const status = document.getElementById('ann-card-image-status');
+    preview.style.display = 'block';
+    thumb.src = URL.createObjectURL(file);
+    status.textContent = 'Uploading...';
+    const fileName = 'announcements/card-' + Date.now() + '-' + file.name.replace(/\s+/g, '-');
+    const { error } = await db.storage.from('assets').upload(fileName, file, { upsert: true });
+    if (error) { status.textContent = 'Upload failed: ' + error.message; return; }
+    const { data: urlData } = db.storage.from('assets').getPublicUrl(fileName);
+    document.getElementById('ann-image').value = urlData.publicUrl;
+    status.textContent = '✅ Uploaded!';
+  }
+
+  let annImages = [];
+
+  function renderAnnImages() {
+    const list = document.getElementById('ann-images-list');
+    if (annImages.length === 0) { list.innerHTML = ''; return; }
+    list.innerHTML = annImages.map((url, i) => `
+      <div style="position:relative;display:inline-block">
+        <img src="${url}" style="width:80px;height:80px;object-fit:cover;border-radius:8px;border:1px solid var(--border)" />
+        <button onclick="removeAnnImage(${i})" style="position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:50%;background:var(--error);color:white;border:none;cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center">✕</button>
+      </div>`).join('');
+    document.getElementById('ann-image').value = annImages[0] || '';
+  }
+
+  function removeAnnImage(index) {
+    annImages.splice(index, 1);
+    renderAnnImages();
+  }
+
+  function addAnnImageUrl() {
+    const url = document.getElementById('ann-image-url-input').value.trim();
+    if (!url) return;
+    annImages.push(url);
+    document.getElementById('ann-image-url-input').value = '';
+    renderAnnImages();
+  }
+
+  async function uploadAnnImages() {
+    const files = document.getElementById('ann-image-file').files;
+    if (!files.length) return;
+    const status = document.getElementById('ann-image-status');
+    status.textContent = 'Uploading...';
+    for (const file of files) {
+      const fileName = 'announcements/' + Date.now() + '-' + Math.random().toString(36).substr(2,6) + '-' + file.name.replace(/\s+/g, '-');
+      const { error } = await db.storage.from('assets').upload(fileName, file, { upsert: true });
+      if (error) { status.textContent = 'Upload failed: ' + error.message; continue; }
+      const { data: urlData } = db.storage.from('assets').getPublicUrl(fileName);
+      annImages.push(urlData.publicUrl);
+    }
+    renderAnnImages();
+    status.textContent = '✅ ' + files.length + ' image' + (files.length > 1 ? 's' : '') + ' uploaded!';
+    document.getElementById('ann-image-file').value = '';
+  }
+
+  function formatTime(rawId, hiddenId) {
+    const raw = document.getElementById(rawId).value;
+    if (!raw) return;
+    const [h, m] = raw.split(':').map(Number);
+    const period = h >= 12 ? 'PM' : 'AM';
+    const hour = h % 12 || 12;
+    const min = m.toString().padStart(2, '0');
+    document.getElementById(hiddenId).value = `${hour}:${min} ${period}`;
+  }
+
+  function showBanner(id) {
+    const el = document.getElementById(id);
+    el.classList.add('visible');
+    setTimeout(() => el.classList.remove('visible'), 3000);
+  }
+</script>
+</body>
+</html>
+<!-- This is a placeholder to check file exists -->
